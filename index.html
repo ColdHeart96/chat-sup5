@@ -418,7 +418,9 @@
 async function sendText(text) {
   document.getElementById('suggestion-chips').style.display = 'none';
   addMessage(text, 'user');
-  const thinkingEl = addThinking();
+
+  const botDiv = addMessage('', 'bot');
+  let fullText = '';
 
   try {
     const res = await fetch(CONFIG.webhookUrl, {
@@ -426,13 +428,33 @@ async function sendText(text) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'sendMessage', chatInput: text, route: CONFIG.webhookRoute })
     });
-    const data = await res.json();
-    thinkingEl.remove();
-    const reply = data?.output || data?.text || data?.message || 'Aucune réponse reçue.';
-    addMessage(reply, 'bot');
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split('\n').filter(l => l.trim());
+
+      for (const line of lines) {
+        try {
+          const parsed = JSON.parse(line);
+          if (parsed.type === 'item' && parsed.content) {
+            fullText += parsed.content;
+            botDiv.innerHTML = formatMessage(fullText);
+            document.getElementById('messages-area').scrollTop = 999999;
+          }
+        } catch {}
+      }
+    }
+
+    if (!fullText) botDiv.textContent = 'Aucune réponse reçue.';
+
   } catch (e) {
-    thinkingEl.remove();
-    addMessage('Une erreur est survenue. Veuillez réessayer.', 'bot');
+    botDiv.textContent = 'Une erreur est survenue. Veuillez réessayer.';
   }
 }
 
