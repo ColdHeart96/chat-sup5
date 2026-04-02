@@ -418,9 +418,7 @@
 async function sendText(text) {
   document.getElementById('suggestion-chips').style.display = 'none';
   addMessage(text, 'user');
-
-  const botDiv = addMessage('', 'bot');
-  let fullText = '';
+  const thinkingEl = addThinking();
 
   try {
     const res = await fetch(CONFIG.webhookUrl, {
@@ -428,37 +426,13 @@ async function sendText(text) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'sendMessage', chatInput: text, route: CONFIG.webhookRoute })
     });
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split('\n').filter(l => l.startsWith('data:'));
-
-      for (const line of lines) {
-        const data = line.replace('data: ', '').trim();
-        console.log('chunk reçu:', data);
-        if (data === '[DONE]') break;
-        try {
-          const parsed = JSON.parse(data);
-          const token = parsed?.output || parsed?.text || parsed?.choices?.[0]?.delta?.content || '';
-          if (token) {
-            fullText += token;
-            botDiv.innerHTML = formatMessage(fullText);
-            document.getElementById('messages-area').scrollTop = 999999;
-          }
-        } catch {}
-      }
-    }
-
-    if (!fullText) botDiv.textContent = 'Aucune réponse reçue.';
-
+    const data = await res.json();
+    thinkingEl.remove();
+    const reply = data?.output || data?.text || data?.message || 'Aucune réponse reçue.';
+    addMessage(reply, 'bot');
   } catch (e) {
-    botDiv.textContent = 'Une erreur est survenue. Veuillez réessayer.';
+    thinkingEl.remove();
+    addMessage('Une erreur est survenue. Veuillez réessayer.', 'bot');
   }
 }
 
