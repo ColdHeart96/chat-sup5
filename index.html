@@ -441,6 +441,7 @@ async function sendText(text) {
 
       for (const line of lines) {
         const data = line.replace('data: ', '').trim();
+        console.log('chunk reçu:', data);
         if (data === '[DONE]') break;
         try {
           const parsed = JSON.parse(data);
