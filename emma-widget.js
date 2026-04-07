@@ -345,7 +345,7 @@
         });
 
         const contentType = res.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
+        if (false) {  // forcer le mode streaming toujours
           const data = await res.json();
           thinkingEl.remove();
           const reply = data?.output || data?.text || data?.message || 'Aucune réponse reçue.';
